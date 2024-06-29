@@ -1,0 +1,27 @@
+[tool.poetry]
+name = "images-segmentation"
+version = "0.1.0"
+description = ""
+authors = ["Vsevolod <wsewolod@mail.ru>"]
+readme = "README.md"
+
+[tool.poetry.dependencies]
+python = "^3.10"
+torch = {version = "^2.1.1+cu121", source = "pytorch"}
+torchvision = "^0.18.1"
+hydra-core = "^1.3.2"
+lightning = "^2.3.1"
+einops = "^0.7.0"
+wandb = "^0.16.6"
+python-dotenv = "^1.0.1"
+matplotlib = "^3.9.0"
+albumentations = "^1.4.10"
+
+[[tool.poetry.source]]
+name = "pytorch"
+url = "https://download.pytorch.org/whl/cu121"
+priority = "explicit"
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"

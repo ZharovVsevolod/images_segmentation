@@ -1,0 +1,15 @@
+defaults:
+  - unet
+
+name: unet
+enc_channels: 
+  - 3
+  - 16
+  - 32
+  - 64
+dec_channels:
+  - 64
+  - 32
+  - 16
+n_classes: 1
+retain_dim: True

@@ -1,0 +1,35 @@
+training:
+  project_name: images_seg
+  train_name: unet-6.5x
+  seed: 1702
+  epochs: 30
+  batch: 64
+  lr: 3e-5
+  model_path: ${hydra:run.dir}/weights
+  wandb_path: ${hydra:run.dir}/wandb
+  save_best_of: 3
+  checkpoint_monitor: val_loss
+  early_stopping_patience: 8
+  num_image_to_save: 4
+  mask_border: 0.2
+
+data:
+  data_directory: dataset/dataset2
+  height: 300
+  width: 300
+  flip_probability: 0.2
+  brightness_probability: 0.1
+
+model:
+  name: unet
+  enc_channels: 
+    - 3
+    - 16
+    - 32
+    - 64
+  dec_channels:
+    - 64
+    - 32
+    - 16
+  n_classes: 1
+  retain_dim: True
