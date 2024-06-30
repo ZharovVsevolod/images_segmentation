@@ -2,7 +2,9 @@ import torch
 import torch.nn.functional as F
 import lightning as L
 from lightning.pytorch.utilities.types import STEP_OUTPUT, OptimizerLRScheduler
-from torchmetrics.classification import BinaryAccuracy
+
+from torchmetrics.classification import BinaryAccuracy, BinaryJaccardIndex, BinaryF1Score
+from torchmetrics import Dice
 
 from images_segmentation.config import Params
 from images_segmentation.models.unet import UNet
@@ -30,7 +32,10 @@ class Model_Lightning_Shell(L.LightningModule):
                 )
 
 
-        self.metric = BinaryAccuracy()
+        self.metric_acc = BinaryAccuracy(threshold = args.training.mask_border)
+        self.metric_dice = Dice(threshold = args.training.mask_border)
+        self.metric_f1 = BinaryF1Score(threshold = args.training.mask_border)
+        self.metric_jac = BinaryJaccardIndex(threshold = args.training.mask_border)
         self.lr = args.training.lr
 
         #-----
@@ -68,10 +73,19 @@ class Model_Lightning_Shell(L.LightningModule):
         y = self(x)
 
         answer_loss = self.loss(y, y_hat)
-        score = self.metric(preds = y, target = y_hat)
+        score_acc = self.metric_acc(preds = y, target = y_hat)
+        score_jac = self.metric_jac(preds = y, target = y_hat)
+        score_f1 = self.metric_f1(preds = y, target = y_hat)
+        score_dice = self.metric_dice(
+            preds = torch.as_tensor(torch.nn.functional.sigmoid(y > self.args.training.mask_border), dtype=torch.int), 
+            target = torch.as_tensor(y_hat, dtype=torch.int)
+        )
 
         self.log("train_loss", answer_loss)
-        self.log("train_acc", score)
+        self.log("train_acc", score_acc)
+        self.log("train_jac", score_jac)
+        self.log("train_dice", score_dice)
+        self.log("train_f1", score_f1)
 
         return answer_loss
     
@@ -81,10 +95,19 @@ class Model_Lightning_Shell(L.LightningModule):
         y = self(x)
 
         answer_loss = self.loss(y, y_hat)
-        score = self.metric(preds = y, target = y_hat)
+        score_acc = self.metric_acc(preds = y, target = y_hat)
+        score_jac = self.metric_jac(preds = y, target = y_hat)
+        score_f1 = self.metric_f1(preds = y, target = y_hat)
+        score_dice = self.metric_dice(
+            preds = torch.as_tensor(torch.nn.functional.sigmoid(y > self.args.training.mask_border), dtype=torch.int), 
+            target = torch.as_tensor(y_hat, dtype=torch.int)
+        )
 
         self.log("val_loss", answer_loss)
-        self.log("val_acc", score)
+        self.log("val_acc", score_acc)
+        self.log("val_jac", score_jac)
+        self.log("val_dice", score_dice)
+        self.log("val_f1", score_f1)
     
     def test_step(self, batch) -> STEP_OUTPUT:
         pass

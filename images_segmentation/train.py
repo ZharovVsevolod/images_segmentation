@@ -66,7 +66,7 @@ def main(cfg: Params) -> None:
         log_every_n_steps=10,
         logger = wandb_log,
         callbacks = [checkpoint, lr_monitor, early_stop, image_save],
-        # fast_dev_run = 1
+        # fast_dev_run = 5
     )
     trainer.fit(model = model, datamodule = dm)
 

@@ -1,3 +1,4 @@
 .env
 images_segmentation/__pycache__/
 outputs/
+some_pages.txt
