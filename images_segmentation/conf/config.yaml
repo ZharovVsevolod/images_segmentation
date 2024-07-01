@@ -1,6 +1,6 @@
 training:
   project_name: images_seg
-  train_name: unet-6.5.2xm
+  train_name: unet-6.5.2xm_aug
   seed: 1702
   epochs: 30
   batch: 64

@@ -112,8 +112,8 @@ class ImagesDataModule(L.LightningDataModule):
 
             case "dataset/dataset2":
                 print("Dataset #2")
-                img_folder = pathlib.Path("dataset/dataset2/data/data/images")
-                mask_folder = pathlib.Path("dataset/dataset2/data/data/masks")
+                img_folder = pathlib.Path("dataset/dataset2/aug_data/aug_data/images")
+                mask_folder = pathlib.Path("dataset/dataset2/aug_data/aug_data/masks")
                 
                 image_names = [str(i) for i in img_folder.iterdir()]
                 image_names.sort()
