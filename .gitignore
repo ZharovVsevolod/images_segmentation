@@ -2,3 +2,4 @@
 images_segmentation/__pycache__/
 outputs/
 some_pages.txt
+images_segmentation/models/__pycache__/
