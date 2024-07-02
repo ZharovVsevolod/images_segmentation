@@ -1,5 +1,5 @@
 defaults:
-  - unet
+  - base_unet
 
 name: unet
 enc_channels: 

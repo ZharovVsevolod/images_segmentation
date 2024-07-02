@@ -1,7 +1,8 @@
 import hydra
 from hydra.core.config_store import ConfigStore
 
-from images_segmentation.config import Params, UnetModel, Scheduler_ReduceOnPlateau, Scheduler_OneCycleLR
+from images_segmentation.config import Params, UnetModel
+from images_segmentation.config import Scheduler_ReduceOnPlateau, Scheduler_OneCycleLR
 from images_segmentation.models.shell import Model_Lightning_Shell, Image_Save_CheckPoint
 from images_segmentation.data import ImagesDataModule
 
@@ -17,7 +18,7 @@ load_dotenv()
 
 cs = ConfigStore.instance()
 cs.store(name="params", node=Params)
-# cs.store(group="model", name="unet", node=UnetModel)
+cs.store(group="model", name="base_unet", node=UnetModel)
 cs.store(group="scheduler", name="base_rop", node=Scheduler_ReduceOnPlateau)
 cs.store(group="scheduler", name="base_oclr", node=Scheduler_OneCycleLR)
 
