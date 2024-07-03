@@ -13,6 +13,19 @@ class UnetModel(Model):
     retain_dim: bool
 
 @dataclass
+class VitModel(Model):
+    image_size: int
+    patch_size: int
+    in_channels: int
+    layers: int
+    heads: int
+    embedding_dim: int
+    mlp_ratio: int
+    norm_type: str
+    dropout: float
+    qkv_bias: bool
+
+@dataclass
 class Scheduler:
     name: str
 

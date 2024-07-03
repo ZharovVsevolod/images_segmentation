@@ -1,0 +1,15 @@
+defaults:
+  - base_vit
+
+name: vit
+in_channels: 3
+image_size: 300
+patch_size: 30
+layers: 6
+heads: 12
+embedding_dim: 768
+mlp_ratio: 4
+n_classes: 1
+norm_type: postnorm
+dropout: 0.15
+qkv_bias: false

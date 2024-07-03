@@ -8,6 +8,7 @@ from torchmetrics import Dice
 
 from images_segmentation.config import Params
 from images_segmentation.models.unet import UNet
+from images_segmentation.models.vit import Mask_Vit
 
 import matplotlib.pyplot as plt
 import einops
@@ -29,6 +30,20 @@ class Model_Lightning_Shell(L.LightningModule):
                       n_classes = args.model.n_classes,
                       retain_dim = args.model.retain_dim,
                       out_size = [args.data.height, args.data.width]
+                )
+            case "vit":
+                self.inner_model = Mask_Vit(
+                    image_size=args.model.image_size,
+                    patch_size=args.model.patch_size,
+                    in_channels=args.model.in_channels,
+                    num_classes=args.model.n_classes,
+                    embed_dim=args.model.embedding_dim,
+                    depth=args.model.layers,
+                    num_heads=args.model.heads,
+                    mlp_ratio=args.model.mlp_ratio,
+                    qkv_bias=args.model.qkv_bias,
+                    drop_rate=args.model.dropout,
+                    norm_type=args.model.norm_type
                 )
 
 

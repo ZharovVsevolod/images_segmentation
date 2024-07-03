@@ -1,9 +1,9 @@
 training:
   project_name: images_seg
-  train_name: unet-6.5.3xm_aug
+  train_name: vit-16
   seed: 1702
   epochs: 30
-  batch: 64
+  batch: 128
   lr: 3e-5
   model_path: ${hydra:run.dir}/weights
   wandb_path: ${hydra:run.dir}/wandb
@@ -11,7 +11,7 @@ training:
   checkpoint_monitor: val_loss
   early_stopping_patience: 9
   num_image_to_save: 4
-  mask_border: 0.35
+  mask_border: 0.5
 
 data:
   data_directory: dataset/dataset2
