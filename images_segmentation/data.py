@@ -6,6 +6,7 @@ from typing import Any, List, Tuple, Literal
 from lightning.pytorch.utilities.types import EVAL_DATALOADERS, TRAIN_DATALOADERS
 import os
 import requests, zipfile, io
+import numpy as np
 
 import pathlib
 from urllib.parse import urlencode
@@ -21,7 +22,8 @@ class ImagesDataset2(Dataset):
             crop_height:int = 256,
             crop_width:int = 256,
             flip_probability:float = 0.5,
-            brightness_probability:float = 0.2
+            brightness_probability:float = 0.2,
+            what_dataset:int = 2
         ) -> None:
         super().__init__()
         self.patches = patches
@@ -33,6 +35,8 @@ class ImagesDataset2(Dataset):
             A.VerticalFlip(p = flip_probability),
             A.RandomBrightnessContrast(p = brightness_probability)
         ])
+
+        self.what_dataset = what_dataset
     
     def __len__(self) -> int:
         return len(self.patches)
@@ -43,6 +47,8 @@ class ImagesDataset2(Dataset):
         image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
 
         mask = cv2.imread(mask_path)
+        if self.what_dataset == 3:
+            mask = np.where(mask == 0, 1, 0)
 
         transformed = self.transform(image = image, mask = mask)
         transformed_image = transformed["image"]
@@ -108,10 +114,11 @@ class ImagesDataModule(L.LightningDataModule):
                 print("Dataset #1")
 
 
-                return 0
+                raise Exception("Dataset #1 will be support soon", self.data_dir)
 
             case "dataset/dataset2":
                 print("Dataset #2")
+                self.dataset_number = 2
                 img_folder = pathlib.Path("dataset/dataset2/aug_data/aug_data/images")
                 mask_folder = pathlib.Path("dataset/dataset2/aug_data/aug_data/masks")
                 
@@ -125,9 +132,17 @@ class ImagesDataModule(L.LightningDataModule):
 
             case "dataset/dataset3":
                 print("Dataset #3")
+                self.dataset_number = 3
+                img_folder = pathlib.Path("dataset/dataset3/images")
+                mask_folder = pathlib.Path("dataset/dataset3/masks")
 
+                image_names = [str(i) for i in img_folder.iterdir()]
+                image_names.sort()
+                mask_names = [str(i) for i in mask_folder.iterdir()]
+                mask_names.sort()
 
-                return 0
+                pathes = list(zip(image_names, mask_names))
+                return pathes
         
         raise Exception("There is no matching dataset in ", self.data_dir)
     
@@ -148,14 +163,16 @@ class ImagesDataModule(L.LightningDataModule):
                 crop_height = self.image_size[0],
                 crop_width = self.image_size[1],
                 flip_probability = self.flip_probability,
-                brightness_probability = self.brightness_probability
+                brightness_probability = self.brightness_probability,
+                what_dataset = self.dataset_number
             )
             self.val_dataset = ImagesDataset2(
                 images_val,
                 crop_height = self.image_size[0],
                 crop_width = self.image_size[1],
                 flip_probability = self.flip_probability,
-                brightness_probability = self.brightness_probability
+                brightness_probability = self.brightness_probability,
+                what_dataset = self.dataset_number
             )
             print("Stage `fit` is set")
 

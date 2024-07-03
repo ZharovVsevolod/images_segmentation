@@ -9,28 +9,12 @@ def show_tensor_image(image):
     plt.imshow(image)
     plt.show()
 
-
-if __name__ == "__main__":
-    dm = ImagesDataModule(
-        data_dir = "dataset/dataset2",
-        batch_size = 4,
-        height = 512,
-        wigth = 512
-    )
-
-    pathes = dm.load_dataset()
-    train, test = random_split(pathes, [0.8, 0.2])
-    dataset = ImagesDataset2(train)
-   
-    # image, mask = dataset[17]
-    # show_tensor_image(image)
-    # show_tensor_image(mask)
-
+def get_images(dataset, i_n):
     images = []
     original_masks = []
     predicted_masks = []
 
-    for i in [17, 28, 56, 100, 105]:
+    for i in i_n:
         image, mask = dataset[i]
 
         image = einops.rearrange(image, "c h w -> h w c")
@@ -39,14 +23,32 @@ if __name__ == "__main__":
         images.append(image)
         original_masks.append(mask)
         predicted_masks.append(mask)
-
     
-    save_img = Image_Save_CheckPoint(4)
+    return images, original_masks, predicted_masks
 
+if __name__ == "__main__":
+    # dm2 = ImagesDataModule(
+    #     data_dir = "dataset/dataset2",
+    #     batch_size = 4,
+    #     height = 300,
+    #     wigth = 300
+    # )
+
+    dm = ImagesDataModule(
+        data_dir = "dataset/dataset3",
+        batch_size = 4,
+        height = 1000,
+        wigth = 1400
+    )
+
+    dm.setup(stage = "fit")
+    
+    images, original_masks, predicted_masks = get_images(dm.val_dataset, [3, 17, 23, 29])
+
+    save_img = Image_Save_CheckPoint(n = 4, border = 0.5)
     fig = save_img.prepare_image_for_logging(
         images=images,
         original_masks=original_masks,
         predicted_masks=predicted_masks
     )
-
     plt.show()
