@@ -9,31 +9,36 @@ from .unet import Block as UnetBlock
 class PatchEmbedding(nn.Module):
     """ Image to Patch Embedding
     """
-    def __init__(self, image_size=224, patch_size=16, in_channels=3, embed_dim=768, need_cls:bool = True):
+    def __init__(
+            self, 
+            in_channels = 3, 
+            image_size_h = 224, 
+            image_size_w = 224, 
+            patch_size_h = 16, 
+            patch_size_w = 16, 
+            embed_dim = 768, 
+            need_cls:bool = True
+        ):
         super().__init__()
 
-        self.image_size = image_size
+        self.image_size_h = image_size_h
+        self.image_size_w = image_size_w
 
-        self.positional_embedding = nn.Parameter(torch.rand(1, (image_size // patch_size)**2, embed_dim))
+        hw_dim = (image_size_h // patch_size_h) * (image_size_w // patch_size_w)
+        self.positional_embedding = nn.Parameter(torch.rand(1, hw_dim, embed_dim))
 
         self.need_cls = need_cls
         if self.need_cls:
             self.class_tokens = nn.Parameter(torch.rand(1, 1, embed_dim))
 
         self.patch_embeddings = nn.Conv2d(
-            in_channels=in_channels,
-            out_channels=embed_dim,
-            kernel_size=patch_size,
-            stride=patch_size
+            in_channels = in_channels,
+            out_channels = embed_dim,
+            kernel_size = (patch_size_h, patch_size_w),
+            stride = (patch_size_h, patch_size_w)
         )
 
-    def forward(self, image):
-        # Проверка размера изображения
-        try:
-            image = einops.rearrange(image, "b c h w -> b c h w", h = self.image_size, w = self.image_size)
-        except Exception:
-            print(f"В будущем тут будет поддержка изображений других размерностей, но пока только {self.image_size}x{self.image_size}")
-        
+    def forward(self, image):        
         patches = self.patch_embeddings(image)
         patches = einops.rearrange(patches, "b c h w -> b (h w) c")
         patches = patches + self.positional_embedding.data
@@ -189,8 +194,10 @@ class ViT(nn.Module):
     """
     def __init__(
             self, 
-            image_size:int = 224, 
-            patch_size:int = 16, 
+            image_size_h=224, 
+            image_size_w=224, 
+            patch_size_h=16, 
+            patch_size_w=16, 
             in_channels:int = 3, 
             num_classes:int = 1000,
             embed_dim:int = 768, 
@@ -206,10 +213,12 @@ class ViT(nn.Module):
         # Присвоение переменных
         # Path Embeddings, CLS Token, Position Encoding
         self.patch_emb = PatchEmbedding(
-            image_size=image_size,
-            patch_size=patch_size,
-            in_channels=in_channels,
-            embed_dim=embed_dim,
+            image_size_h = image_size_h,
+            image_size_w = image_size_w,
+            patch_size_h = patch_size_h,
+            patch_size_w = patch_size_w,
+            in_channels = in_channels,
+            embed_dim = embed_dim,
             need_cls = need_cls
         )
         # Transformer Encoder
@@ -238,8 +247,10 @@ class ViT(nn.Module):
 class Mask_Vit(nn.Module):
     def __init__(
             self,
-            image_size:int = 224, 
-            patch_size:int = 16, 
+            image_size_h:int = 224, 
+            image_size_w:int = 224, 
+            patch_size_h:int = 16, 
+            patch_size_w:int = 16, 
             in_channels:int = 3, 
             num_classes:int = 10,
             embed_dim:int = 768, 
@@ -252,16 +263,17 @@ class Mask_Vit(nn.Module):
 
     ) -> None:
         super().__init__()
-        self.image_size = image_size
-        self.patch_size = patch_size
-        self.num_classes = num_classes
-        self.patch_count = int(image_size / patch_size)
-        self.patch_size_after_vit = self.patch_count**2
-        self.num_output_pixels = num_classes * patch_size * patch_size
+        self.patch_size_h = patch_size_h
+        self.patch_size_w = patch_size_w
+        self.patch_count_h = image_size_h // patch_size_h
+        self.patch_count_w = image_size_w // patch_size_w
+        self.num_output_pixels = num_classes * patch_size_h * patch_size_w
         
         self.vit_model = ViT(
-            image_size = image_size, 
-            patch_size = patch_size, 
+            image_size_h = image_size_h, 
+            image_size_w = image_size_w, 
+            patch_size_h = patch_size_h, 
+            patch_size_w = patch_size_w, 
             in_channels = in_channels, 
             num_classes = self.num_output_pixels,
             embed_dim = embed_dim, 
@@ -292,18 +304,18 @@ class Mask_Vit(nn.Module):
         x = einops.rearrange(
             tensor = x,
             pattern = "b (ph pw) (pph ppw) -> b ph pw pph ppw",
-            ph = self.patch_count,
-            pw = self.patch_count,
-            pph = self.patch_size,
-            ppw = self.patch_size
+            ph = self.patch_count_h,
+            pw = self.patch_count_w,
+            pph = self.patch_size_h,
+            ppw = self.patch_size_w
         )
         x = einops.rearrange(
             tensor = x,
             pattern = "b ph pw pph ppw -> b 1 (ph pph) (pw ppw)",
-            ph = self.patch_count,
-            pw = self.patch_count,
-            pph = self.patch_size,
-            ppw = self.patch_size
+            ph = self.patch_count_h,
+            pw = self.patch_count_w,
+            pph = self.patch_size_h,
+            ppw = self.patch_size_w
         )
         return x
 

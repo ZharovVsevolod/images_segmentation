@@ -33,17 +33,19 @@ class Model_Lightning_Shell(L.LightningModule):
                 )
             case "vit":
                 self.inner_model = Mask_Vit(
-                    image_size=args.model.image_size,
-                    patch_size=args.model.patch_size,
-                    in_channels=args.model.in_channels,
-                    num_classes=args.model.n_classes,
-                    embed_dim=args.model.embedding_dim,
-                    depth=args.model.layers,
-                    num_heads=args.model.heads,
-                    mlp_ratio=args.model.mlp_ratio,
-                    qkv_bias=args.model.qkv_bias,
-                    drop_rate=args.model.dropout,
-                    norm_type=args.model.norm_type
+                    image_size_h = args.model.image_size_h, 
+                    image_size_w = args.model.image_size_w, 
+                    patch_size_h = args.model.patch_size_h, 
+                    patch_size_w = args.model.patch_size_w, 
+                    in_channels = args.model.in_channels,
+                    num_classes = args.model.n_classes,
+                    embed_dim = args.model.embedding_dim,
+                    depth = args.model.layers,
+                    num_heads = args.model.heads,
+                    mlp_ratio = args.model.mlp_ratio,
+                    qkv_bias = args.model.qkv_bias,
+                    drop_rate = args.model.dropout,
+                    norm_type = args.model.norm_type
                 )
 
 

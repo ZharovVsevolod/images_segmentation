@@ -14,8 +14,10 @@ class UnetModel(Model):
 
 @dataclass
 class VitModel(Model):
-    image_size: int
-    patch_size: int
+    image_size_h: int
+    image_size_w: int
+    patch_size_h: int
+    patch_size_w: int
     in_channels: int
     layers: int
     heads: int

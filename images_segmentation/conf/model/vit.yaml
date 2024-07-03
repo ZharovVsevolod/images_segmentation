@@ -3,8 +3,10 @@ defaults:
 
 name: vit
 in_channels: 3
-image_size: 300
-patch_size: 30
+image_size_h: 1000
+image_size_w: 1400
+patch_size_h: 100
+patch_size_w: 140
 layers: 6
 heads: 12
 embedding_dim: 768

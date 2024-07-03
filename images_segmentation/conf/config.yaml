@@ -3,7 +3,7 @@ training:
   train_name: unet-1
   seed: 1702
   epochs: 30
-  batch: 4
+  batch: 16
   lr: 3e-5
   model_path: ${hydra:run.dir}/weights
   wandb_path: ${hydra:run.dir}/wandb
