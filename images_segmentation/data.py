@@ -23,18 +23,27 @@ class ImagesDataset2(Dataset):
             crop_width:int = 256,
             flip_probability:float = 0.5,
             brightness_probability:float = 0.2,
-            what_dataset:int = 2
+            what_dataset:int = 2,
+            need_resize:bool = False
         ) -> None:
         super().__init__()
         self.patches = patches
 
-        self.transform = A.Compose([
-            A.PadIfNeeded(min_height = crop_height, min_width = crop_width),
-            A.RandomCrop(height = crop_height, width = crop_width),
-            A.HorizontalFlip(p = flip_probability),
-            A.VerticalFlip(p = flip_probability),
-            A.RandomBrightnessContrast(p = brightness_probability)
-        ])
+        if need_resize:
+            self.transform = A.Compose([
+                A.Resize(height = crop_height, width = crop_width),
+                A.HorizontalFlip(p = flip_probability),
+                A.VerticalFlip(p = flip_probability),
+                A.RandomBrightnessContrast(p = brightness_probability)
+            ])
+        else:
+            self.transform = A.Compose([
+                A.PadIfNeeded(min_height = crop_height, min_width = crop_width),
+                A.RandomCrop(height = crop_height, width = crop_width),
+                A.HorizontalFlip(p = flip_probability),
+                A.VerticalFlip(p = flip_probability),
+                A.RandomBrightnessContrast(p = brightness_probability)
+            ])
 
         self.what_dataset = what_dataset
     
@@ -91,7 +100,8 @@ class ImagesDataModule(L.LightningDataModule):
             height:int,
             wigth:int,
             flip_probability:float = 0.5,
-            brightness_probability:float = 0.2
+            brightness_probability:float = 0.2,
+            need_resize:bool = False
         ) -> None:
         super().__init__()
 
@@ -101,6 +111,7 @@ class ImagesDataModule(L.LightningDataModule):
 
         self.flip_probability = flip_probability
         self.brightness_probability = brightness_probability
+        self.need_resize = need_resize
     
     def prepare_data(self) -> None:
         if not os.path.isdir(self.data_dir):
@@ -164,7 +175,8 @@ class ImagesDataModule(L.LightningDataModule):
                 crop_width = self.image_size[1],
                 flip_probability = self.flip_probability,
                 brightness_probability = self.brightness_probability,
-                what_dataset = self.dataset_number
+                what_dataset = self.dataset_number,
+                need_resize = self.need_resize
             )
             self.val_dataset = ImagesDataset2(
                 images_val,
@@ -172,7 +184,8 @@ class ImagesDataModule(L.LightningDataModule):
                 crop_width = self.image_size[1],
                 flip_probability = self.flip_probability,
                 brightness_probability = self.brightness_probability,
-                what_dataset = self.dataset_number
+                what_dataset = self.dataset_number,
+                need_resize = self.need_resize
             )
             print("Stage `fit` is set")
 

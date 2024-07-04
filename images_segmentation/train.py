@@ -35,7 +35,8 @@ def main(cfg: Params) -> None:
         height = cfg.data.height,
         wigth = cfg.data.width,
         flip_probability = cfg.data.flip_probability,
-        brightness_probability = cfg.data.brightness_probability
+        brightness_probability = cfg.data.brightness_probability,
+        need_resize = cfg.data.need_resize
     )
 
     model = Model_Lightning_Shell(cfg)

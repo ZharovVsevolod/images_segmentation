@@ -1,6 +1,6 @@
 training:
-  project_name: images_seg_3
-  train_name: unet-1
+  project_name: images_seg
+  train_name: unet-8.3xmr_aug
   seed: 1702
   epochs: 30
   batch: 16
@@ -11,11 +11,12 @@ training:
   checkpoint_monitor: val_loss
   early_stopping_patience: 9
   num_image_to_save: 4
-  mask_border: 0.3
+  mask_border: 0.35
 
 data:
-  data_directory: dataset/dataset3
-  height: 1000
-  width: 1400
+  data_directory: dataset/dataset2
+  height: 512
+  width: 512
   flip_probability: 0.2
   brightness_probability: 0.1
+  need_resize: true

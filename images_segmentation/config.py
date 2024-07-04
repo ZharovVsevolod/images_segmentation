@@ -47,6 +47,7 @@ class Data:
     width: int
     flip_probability: float
     brightness_probability: float
+    need_resize: bool
 
 @dataclass
 class Training:
