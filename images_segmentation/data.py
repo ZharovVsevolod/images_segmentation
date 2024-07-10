@@ -2,10 +2,9 @@ import torch
 from torch.utils.data import Dataset, DataLoader, random_split
 import lightning as L
 
-from typing import Any, List, Tuple, Literal
 from lightning.pytorch.utilities.types import EVAL_DATALOADERS, TRAIN_DATALOADERS
 import os
-import requests, zipfile, io
+import requests, zipfile
 import numpy as np
 
 import pathlib
@@ -14,6 +13,45 @@ from urllib.parse import urlencode
 import albumentations as A
 import cv2
 import einops
+
+import pandas as pd
+from tqdm import tqdm
+
+class ImagesDataset1(Dataset):
+    def __init__(
+            self, 
+            paths,
+            need_height:int = 150,
+            need_width:int = 120,
+            path_to_cut = "dataset/dataset1/cut"
+        ) -> None:
+        super().__init__()
+
+        self.path_to_cut = path_to_cut
+        self.paths = paths
+        self.transform = A.Resize(height = need_height, width = need_width)
+
+    def __len__(self) -> int:
+        return len(self.paths)
+    
+    def __getitem__(self, index:int):
+        image_path, alpha = self.paths.iloc[index]
+        image_path = self.path_to_cut + "/" + image_path
+        image = cv2.imread(image_path)
+
+        if image.shape[0] < image.shape[1]:
+            image = cv2.rotate(image, cv2.ROTATE_90_CLOCKWISE)
+        
+        image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
+
+        transformed_image = self.transform(image = image)["image"]
+        
+        tensor_transformed_image = torch.tensor(transformed_image, dtype = torch.float32)
+        tensor_transformed_image = einops.rearrange(tensor_transformed_image, "h w c -> c h w")
+
+        alpha = torch.tensor(alpha, dtype = torch.float32)
+
+        return tensor_transformed_image, alpha
 
 class ImagesDataset2(Dataset):
     def __init__(
@@ -91,6 +129,60 @@ def download_datasets():
         with zipfile.ZipFile(dataset_file, 'r') as zip_ref:
             zip_ref.extractall("dataset")
 
+def cut_image_and_return_df(
+        path_to_dir, 
+        path_to_image,
+        path_to_labels = "dataset/dataset1/labels.csv",
+        cut_and_labels = pd.DataFrame({"path" : [], "alpha" : []})
+    ):
+    img_path = pathlib.Path(path_to_image)
+    image = cv2.imread(img_path)
+
+    labels_path = pathlib.Path(path_to_labels)
+    df = pd.read_csv(labels_path)
+
+    image_labels = df[df["image"] == img_path.name.split("_")[-1]]
+
+    if not os.path.isdir(f"{path_to_dir}/cut"):
+        os.mkdir(f"{path_to_dir}/cut")
+
+    i = 0
+    for line in image_labels.iloc():
+        idx, img, xtl, ytl, xbr, ybr, alpha = line.values
+        cropped_image = image[ytl:ybr, xtl:xbr, :]
+
+        img_cut = img.split(".")[0]
+        new_name = f"{img_cut}_{i}.jpg"
+        i += 1
+
+        temp = pd.DataFrame({
+                "path" : [new_name],
+                "alpha" : [alpha]
+        })
+
+        cut_and_labels = pd.concat([cut_and_labels, temp], ignore_index = True)
+        cv2.imwrite(path_to_dir + "/cut/" + new_name, cropped_image)
+    
+    return cut_and_labels
+
+def cut_ds1(root_dir):
+    image_names = os.listdir(root_dir)
+
+    cut_and_labels = pd.DataFrame({"path" : [], "alpha" : []})
+
+    print("Extracting object from images...")
+
+    for img_name in tqdm(image_names):
+        cut_and_labels = cut_image_and_return_df(
+            path_to_dir = "dataset/dataset1",
+            path_to_image = f"{root_dir}/{img_name}",
+            cut_and_labels = cut_and_labels
+        )
+
+    cut_and_labels.to_csv("dataset/dataset1/cut_and_labels.csv", index = False)
+
+    print("Extraction complete")
+
 
 class ImagesDataModule(L.LightningDataModule):
     def __init__(
@@ -116,16 +208,19 @@ class ImagesDataModule(L.LightningDataModule):
     def prepare_data(self) -> None:
         if not os.path.isdir(self.data_dir):
             download_datasets()
+            dm1_cut_path = self.data_dir.split("/")[0] + "/dataset1/images"
+            cut_ds1(dm1_cut_path)
         else:
-            print("Dataset is on his place")
+            print("Dataset in it`s place")
     
     def load_dataset(self):
         match self.data_dir:
             case "dataset/dataset1":
                 print("Dataset #1")
+                self.dataset_number = 1
 
-
-                raise Exception("Dataset #1 will be support soon", self.data_dir)
+                paths_and_alphas = pd.read_csv("dataset/dataset1/cut_and_labels.csv")
+                return paths_and_alphas
 
             case "dataset/dataset2":
                 print("Dataset #2")
@@ -162,31 +257,57 @@ class ImagesDataModule(L.LightningDataModule):
         full_images = self.load_dataset()
         print("Dataset has been loaded")
         print("Splitting the full dataset")
-        images_train, images_val = random_split(full_images, [0.8, 0.2])
+        if self.dataset_number == 1:
+            images_train = full_images.sample(frac = 0.8)
+            images_val = full_images.drop(images_train.index)
+            dl = images_val["alpha"].value_counts().to_dict()
+            print("How many examples to each class in validation part")
+            print(dl)
+            del dl
+        else:
+            images_train, images_val = random_split(full_images, [0.8, 0.2])
+        
         del full_images
         print("Dataset has been splitted")
         print(f"Length of train part: {len(images_train)}")
         print(f"Length of validation part: {len(images_val)}")
 
-        if stage == "fit" or stage is None:
-            self.train_dataset = ImagesDataset2(
-                images_train,
-                crop_height = self.image_size[0],
-                crop_width = self.image_size[1],
-                flip_probability = self.flip_probability,
-                brightness_probability = self.brightness_probability,
-                what_dataset = self.dataset_number,
-                need_resize = self.need_resize
-            )
-            self.val_dataset = ImagesDataset2(
-                images_val,
-                crop_height = self.image_size[0],
-                crop_width = self.image_size[1],
-                flip_probability = self.flip_probability,
-                brightness_probability = self.brightness_probability,
-                what_dataset = self.dataset_number,
-                need_resize = self.need_resize
-            )
+        if self.dataset_number == 1:
+            if stage == "fit" or stage is None:
+                self.train_dataset = ImagesDataset1(
+                    images_train,
+                    need_height = self.image_size[0],
+                    need_width = self.image_size[1],
+                    path_to_cut = "dataset/dataset1/cut"
+                )
+                self.val_dataset = ImagesDataset1(
+                    images_val,
+                    need_height = self.image_size[0],
+                    need_width = self.image_size[1],
+                    path_to_cut = "dataset/dataset1/cut"
+                )
+
+        else:
+            if stage == "fit" or stage is None:
+                self.train_dataset = ImagesDataset2(
+                    images_train,
+                    crop_height = self.image_size[0],
+                    crop_width = self.image_size[1],
+                    flip_probability = self.flip_probability,
+                    brightness_probability = self.brightness_probability,
+                    what_dataset = self.dataset_number,
+                    need_resize = self.need_resize
+                )
+                self.val_dataset = ImagesDataset2(
+                    images_val,
+                    crop_height = self.image_size[0],
+                    crop_width = self.image_size[1],
+                    flip_probability = self.flip_probability,
+                    brightness_probability = self.brightness_probability,
+                    what_dataset = self.dataset_number,
+                    need_resize = self.need_resize
+                )
+            
             print("Stage `fit` is set")
 
         if stage == "test" or stage is None:

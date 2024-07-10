@@ -5,14 +5,17 @@ from lightning.pytorch.utilities.types import STEP_OUTPUT, OptimizerLRScheduler
 
 from torchmetrics.classification import BinaryAccuracy, BinaryJaccardIndex, BinaryF1Score
 from torchmetrics import Dice
+from torchmetrics.regression import MeanSquaredError
 
 from images_segmentation.config import Params
 from images_segmentation.models.unet import UNet
 from images_segmentation.models.vit import Mask_Vit
+from images_segmentation.models.simple_model import SimpleModel
 
 import matplotlib.pyplot as plt
 import einops
 import numpy as np
+import itertools
 
 class Model_Lightning_Shell(L.LightningModule):
     def __init__(
@@ -198,3 +201,131 @@ class Image_Save_CheckPoint(L.Callback):
 
         figure.tight_layout()
         return figure
+
+
+#--------------------------------------------
+#-----Part of Simple Model for dataset 1-----
+#--------------------------------------------
+
+class SM_Shell(L.LightningModule):
+    def __init__(
+            self,
+            args: Params
+        ) -> None:
+        super().__init__()        
+        self.inner_model = SimpleModel(
+            enc_channels = args.model.enc_channels,
+            head_channels = args.model.head_channels,
+            head_droprate = args.model.head_droprate
+        )
+
+        self.metric = MeanSquaredError()
+        self.loss_func = torch.nn.MSELoss()
+        self.lr = args.training.lr
+
+        self.clear_matrix()
+
+        #-----
+        self.args = args
+        self.save_hyperparameters()
+    
+    def forward(self, x) -> torch.Any:
+        return self.inner_model(x)
+    
+    def loss(self, y, y_hat):
+        return self.loss_func(y, y_hat)
+    
+    def lr_scheduler(self, optimizer):
+        if self.args.scheduler.name == "ReduceOnPlateau":
+            sched = torch.optim.lr_scheduler.ReduceLROnPlateau(
+                optimizer, 
+                patience = self.args.scheduler.patience, 
+                factor = self.args.scheduler.factor
+            )
+            scheduler_out = {"scheduler": sched, "monitor": "val_loss"}
+        
+        if self.args.scheduler.name == "OneCycleLR":
+            sched = torch.optim.lr_scheduler.OneCycleLR(
+                optimizer, 
+                max_lr = self.lr * self.args.scheduler.expand_lr, 
+                total_steps = self.args.training.epochs
+            )
+            scheduler_out = {"scheduler": sched}
+        
+        return scheduler_out
+    
+    def update_matrix(self, y:torch.Tensor, y_hat:torch.Tensor) -> None:
+        n = y.shape[0]
+        for i in range(n):
+            yht = int(y_hat[i] * 10)
+            yt = int(torch.round(y[i], decimals=1)  * 10)
+
+            self.ans_matrix[yht][yt] += 1
+    
+    def clear_matrix(self) -> None:
+        self.ans_matrix = np.zeros((11, 11), dtype = int)            
+    
+    def training_step(self, batch) -> STEP_OUTPUT:
+        x, y_hat = batch
+
+        y = self(x).squeeze()
+
+        answer_loss = self.loss(y, y_hat)
+        self.log("train_loss", answer_loss)
+
+        return answer_loss
+    
+    def validation_step(self, batch) -> STEP_OUTPUT:
+        x, y_hat = batch
+
+        y = self(x).squeeze()
+
+        self.update_matrix(y, y_hat)
+
+        answer_loss = self.loss(y, y_hat)
+        self.log("val_loss", answer_loss)
+    
+    def test_step(self, batch) -> STEP_OUTPUT:
+        pass
+    
+    def configure_optimizers(self) -> OptimizerLRScheduler:
+        optimizer = torch.optim.AdamW(self.parameters(), lr=self.lr, weight_decay=0.1)
+        scheduler_dict = self.lr_scheduler(optimizer)
+        return (
+            {'optimizer': optimizer, 'lr_scheduler': scheduler_dict}
+        )
+
+
+class AnswerMatrix(L.Callback):
+    def __init__(self) -> None:
+        super().__init__()
+    
+    def make_img_matrix(self, matr):
+        fig = plt.figure(figsize = (12, 8), dpi = 80)
+        plt.imshow(matr,  interpolation = 'nearest', cmap = plt.cm.Blues)
+        plt.colorbar()
+
+        tick_marks = np.arange(11)
+        labels = np.arange(start = 0.0, stop = 1.1, step = 0.1)
+        labels = [round(mrk, 1) for mrk in labels]
+        plt.xticks(tick_marks, labels)
+        plt.yticks(tick_marks, labels)
+
+        fmt = 'd'
+        thresh = matr.max() / 2.
+        for i, j in itertools.product(range(matr.shape[0]), range(matr.shape[1])):
+            plt.text(j, i, format(matr[i, j], fmt), horizontalalignment="center", color="white" if matr[i, j] > thresh else "black")
+
+        plt.tight_layout()
+        plt.ylabel('True label')
+        plt.xlabel('Predicted label')
+        # plt.show()
+        return [fig]
+
+    def on_validation_epoch_end(self, trainer: L.Trainer, pl_module: L.LightningModule | SM_Shell) -> None:
+        answer_matrix = pl_module.ans_matrix
+        pl_module.clear_matrix()
+        answer_matrix_image = self.make_img_matrix(answer_matrix)
+
+        trainer.logger.log_image(key = "Validation Confusion Matrix", images = answer_matrix_image)
+        plt.close()

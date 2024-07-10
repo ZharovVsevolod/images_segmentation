@@ -4,16 +4,23 @@ from dataclasses import dataclass
 @dataclass
 class Model:
     name: str
-    n_classes: int
+
+@dataclass
+class SimpleMd(Model):
+    enc_channels: List
+    head_channels: List
+    head_droprate: float
 
 @dataclass
 class UnetModel(Model):
+    n_classes: int
     enc_channels: List
     dec_channels: List
     retain_dim: bool
 
 @dataclass
 class VitModel(Model):
+    n_classes: int
     image_size_h: int
     image_size_w: int
     patch_size_h: int

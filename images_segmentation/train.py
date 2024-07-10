@@ -1,9 +1,10 @@
 import hydra
 from hydra.core.config_store import ConfigStore
 
-from images_segmentation.config import Params, UnetModel, VitModel
+from images_segmentation.config import Params, UnetModel, VitModel, SimpleMd
 from images_segmentation.config import Scheduler_ReduceOnPlateau, Scheduler_OneCycleLR
 from images_segmentation.models.shell import Model_Lightning_Shell, Image_Save_CheckPoint
+from images_segmentation.models.shell import SM_Shell, AnswerMatrix
 from images_segmentation.data import ImagesDataModule
 
 import lightning as L
@@ -20,6 +21,7 @@ cs = ConfigStore.instance()
 cs.store(name="params", node=Params)
 cs.store(group="model", name="base_unet", node=UnetModel)
 cs.store(group="model", name="base_vit", node=VitModel)
+cs.store(group="model", name="base_simple", node=SimpleMd)
 cs.store(group="scheduler", name="base_rop", node=Scheduler_ReduceOnPlateau)
 cs.store(group="scheduler", name="base_oclr", node=Scheduler_OneCycleLR)
 
@@ -38,8 +40,10 @@ def main(cfg: Params) -> None:
         brightness_probability = cfg.data.brightness_probability,
         need_resize = cfg.data.need_resize
     )
-
-    model = Model_Lightning_Shell(cfg)
+    if cfg.model.name == "simple":
+        model = SM_Shell(cfg)
+    else:
+        model = Model_Lightning_Shell(cfg)
 
     os.mkdir(cfg.training.wandb_path)
     wandb_log = WandbLogger(
@@ -57,10 +61,18 @@ def main(cfg: Params) -> None:
     lr_monitor = LearningRateMonitor(logging_interval = "epoch")
     early_stop = EarlyStopping(monitor = cfg.training.checkpoint_monitor, patience = cfg.training.early_stopping_patience)
 
-    image_save = Image_Save_CheckPoint(
-        n = cfg.training.num_image_to_save,
-        border = cfg.training.mask_border
-    )
+    if cfg.model.name == "simple":
+        answers_save = AnswerMatrix()
+
+        all_callbacks = [checkpoint, lr_monitor, early_stop, answers_save]
+
+    else:
+        image_save = Image_Save_CheckPoint(
+            n = cfg.training.num_image_to_save,
+            border = cfg.training.mask_border
+        )
+
+        all_callbacks = [checkpoint, lr_monitor, early_stop, image_save]
 
     trainer = L.Trainer(
         max_epochs = cfg.training.epochs,
@@ -68,7 +80,7 @@ def main(cfg: Params) -> None:
         devices = 1,
         log_every_n_steps=10,
         logger = wandb_log,
-        callbacks = [checkpoint, lr_monitor, early_stop, image_save],
+        callbacks = all_callbacks,
         # fast_dev_run = 5
     )
     trainer.fit(model = model, datamodule = dm)

@@ -1,22 +1,22 @@
 training:
-  project_name: images_seg
-  train_name: unet-8.3xmr_aug
+  project_name: images_seg1
+  train_name: smx-3
   seed: 1702
-  epochs: 30
-  batch: 16
-  lr: 3e-5
+  epochs: 120
+  batch: 128
+  lr: 3e-4
   model_path: ${hydra:run.dir}/weights
   wandb_path: ${hydra:run.dir}/wandb
   save_best_of: 3
   checkpoint_monitor: val_loss
-  early_stopping_patience: 9
+  early_stopping_patience: 20
   num_image_to_save: 4
   mask_border: 0.35
 
 data:
-  data_directory: dataset/dataset2
-  height: 512
-  width: 512
+  data_directory: dataset/dataset1
+  height: 150
+  width: 120
   flip_probability: 0.2
   brightness_probability: 0.1
   need_resize: true

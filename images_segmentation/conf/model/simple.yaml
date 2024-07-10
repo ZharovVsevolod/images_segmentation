@@ -1,0 +1,16 @@
+defaults:
+  - base_simple
+
+name: simple
+enc_channels:
+  - 3
+  - 8
+  - 3
+  - 1
+head_channels:
+  - 690
+  - 256
+  - 128
+  - 16
+  - 1
+head_droprate: 0.05
